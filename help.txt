@@ -1,0 +1,134 @@
+Use These Commands to Securely Upload To a Server
+Standard SSH Port:
+
+rsync -avH --progress /home/behnam/setad/sapphire/templates/our_team.html -e ssh root@185.255.88.111:/home/behnam/setad/sapphire/templates
+
+
+
+NGINX setting----------------------------------------------------------------------------------------------------------------------------
+
+/etc/nginx/sites-available/default :
+-----------------
+
+upstream behnam{
+server 127.0.0.1:8000;
+}
+
+server {
+listen 80;
+root /var/www/sapphireai.info/index.html;
+server_name sapphireai.info;
+
+location /static/ {
+root /var/www/setad;
+try_files $uri =404;
+}
+
+location / {
+try_files $uri @send_to_behnam;
+}
+
+location @send_to_behnam {
+proxy_set_header Host $http_host;
+proxy_redirect off;
+proxy_pass http://behnam;
+}
+}
+                                                                                                                                         
+
+Gunicorn setting--------------------------------------------------------------------------------------------------------------------------
+
+/home/behnam/bin/start-server.sh:
+--------------
+cd /home/behnam
+source env/bin/activate
+cd setad
+gunicorn setad.wsgi
+
+
+
+
+------------------------------------------------------------------------------
+(vim)
+/etc/systemd/system/gunicorn.service:
+--------------
+
+[Unit]
+Description=Gunicorn
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=bash  /home/behnam/bin/start-server.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+
+Celery Setting-------------------------------------------------------------------------------------------------------------------------
+
+
+/home/behnam/bin/start-celery.sh:
+--------------
+cd /home/behnam
+source env/bin/activate
+cd setad
+celery -A  sapphire worker --pool threads -l info
+
+--------------------------------------------------------------------------
+(vim)
+/etc/systemd/system/celery.service:
+--------------
+
+[Unit]
+Description=CeleryService
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=bash  /home/behnam/bin/start-celery.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+
+
+
+                                                                                                                                         
+-------------------------------------------------------------------------------------------------------------------------
+server  building recipe:
+-  useradd -m behnam
+-  sudo apt install nginx-full
+-  sudo apt python-pip3
+-  pip install virtualenv
+-  create: virtualenv env          and activate it
+-  pip install django gunicorn transformers scikit-learn
+-  pip install  pytorch (cpu version)
+-  pip install hazm
+-  pip install xlrd
+-  pip install pandas
+
+- pip install celery
+- pip install redis
+
+-------------------------------------------------------------------------------------------------------------------------
+to restart server:
+nginx -s reload
+systemctl restart gunicorn
+
+systemctl daemon-reload
+systemctl enable celery
+systemctl restart celery
+-------------------------------------------------------------------------------------------------------------------------
+to connect server:
+ssh root@185.255.88.111
+pass: 5EJyK416ti5Koo8IPc
+
+
+
